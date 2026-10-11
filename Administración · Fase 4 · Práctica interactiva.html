@@ -1,0 +1,253 @@
+<title>Laboratorio de Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: tablero de planta — encabezado tipo hoja de control, tres módulos apilados (calculadora, línea andon, quiz) */
+:root{
+  --bg:#EEF3F8; --panel:#FFFFFF; --ink:#12233A; --body:#3D4E63; --muted:#5A6B80; --line:#D3DFEC;
+  --accent:#2463C9; --accent-ink:#F4F7FA; --soft:#DCE8F7;
+  --ok:#1F8A5C; --ok-bg:#D6EFE3; --warn:#9A6A0C; --warn-bg:#FCEBC7; --bad:#B8402F; --bad-bg:#F9DCD6;
+  --piece:#9FB5CF; --belt:#C9D6E4;
+  --display:'Archivo', 'Arial Narrow', Arial, sans-serif;
+  --text:'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1B2A; --panel:#15263B; --ink:#EEF3F8; --body:#C9D6E4; --muted:#9FB5CF; --line:#24395A;
+  --accent:#6E9EF0; --accent-ink:#0D1B2A; --soft:#1E3556;
+  --ok:#6FD8A8; --ok-bg:#163D33; --warn:#F2C25C; --warn-bg:#3D3016; --bad:#F08A78; --bad-bg:#43211E;
+  --piece:#5B7699; --belt:#22395A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1B2A; --panel:#15263B; --ink:#EEF3F8; --body:#C9D6E4; --muted:#9FB5CF; --line:#24395A;
+  --accent:#6E9EF0; --accent-ink:#0D1B2A; --soft:#1E3556;
+  --ok:#6FD8A8; --ok-bg:#163D33; --warn:#F2C25C; --warn-bg:#3D3016; --bad:#F08A78; --bad-bg:#43211E;
+  --piece:#5B7699; --belt:#22395A; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--body); font-family:var(--text); font-size:16px; line-height:1.55; padding:0 16px}
+.wrap{max-width:1040px; margin:0 auto; padding-block:32px 56px; display:flex; flex-direction:column; gap:28px}
+h1,h2,h3{font-family:var(--display); color:var(--ink); line-height:1.1; text-wrap:balance; margin:0}
+p{margin:0}
+.sheet{display:grid; grid-template-columns:1fr auto; gap:16px 28px; align-items:end; border-bottom:3px solid var(--ink); padding-bottom:20px}
+.sheet h1{font-size:clamp(34px,6vw,56px); font-weight:800; letter-spacing:-0.5px}
+.sheet .sub{grid-column:1/-1; max-width:62ch; color:var(--body)}
+.meta{display:grid; grid-template-columns:auto auto; gap:2px 14px; font-family:var(--mono); font-size:13px; color:var(--muted)}
+.meta b{color:var(--ink); font-weight:600}
+.eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); font-weight:600}
+.module{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; display:flex; flex-direction:column; gap:18px}
+.mhead{display:flex; flex-wrap:wrap; gap:6px 16px; align-items:baseline; justify-content:space-between}
+.mhead h2{font-size:26px; font-weight:700}
+.mhead p{color:var(--muted); max-width:60ch}
+.grid2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px}
+@media (max-width:720px){.grid2{grid-template-columns:1fr} .sheet{grid-template-columns:1fr}}
+label{display:block; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:6px}
+.fields{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.fields .full{grid-column:1/-1}
+input,select{width:100%; font:inherit; font-family:var(--mono); font-size:17px; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.hint{font-size:13px; color:var(--muted); margin-top:6px}
+.result{display:flex; flex-direction:column; gap:14px; background:var(--bg); border-radius:12px; padding:20px}
+.big{font-family:var(--mono); font-size:52px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1}
+.big small{font-size:20px; color:var(--muted)}
+.chip{align-self:flex-start; display:inline-flex; align-items:center; gap:8px; font-weight:600; font-size:14px; padding:6px 14px; border-radius:999px}
+.chip::before{content:""; width:12px; height:12px; border-radius:50%; background:currentColor}
+.ok{color:var(--ok); background:var(--ok-bg)} .warn{color:var(--warn); background:var(--warn-bg)} .bad{color:var(--bad); background:var(--bad-bg)}
+.scale{position:relative; height:14px; border-radius:7px; background:linear-gradient(90deg,var(--bad-bg) 0 42.5%,var(--warn-bg) 42.5% 47.5%,var(--ok-bg) 47.5% 100%)}
+.scale .mark{position:absolute; top:-5px; width:4px; height:24px; background:var(--ink); border-radius:2px; transition:left .4s}
+.scale-l{display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; color:var(--muted)}
+.formula{font-family:var(--mono); font-size:14px; color:var(--body)}
+/* Línea andon */
+.belt{display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:8px; background:var(--belt); border-radius:12px; padding:14px}
+.slot{aspect-ratio:1; max-width:100%; border-radius:10px; background:var(--panel); display:grid; place-items:center; position:relative}
+.piece{width:62%; aspect-ratio:1; border-radius:50%; background:var(--piece); transition:transform .3s}
+.piece.def{background:var(--bad); box-shadow:0 0 0 4px var(--bad-bg)}
+.piece.fixed{background:var(--ok)}
+.slot:last-child::after{content:"Cliente"; position:absolute; bottom:-22px; font-size:11px; font-family:var(--mono); color:var(--muted)}
+.slot:first-child::after{content:"Inicio"; position:absolute; bottom:-22px; font-size:11px; font-family:var(--mono); color:var(--muted)}
+.controls{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:10px}
+button{font:inherit; font-weight:600; border-radius:10px; border:0; padding:12px 20px; cursor:pointer; min-height:44px}
+.btn{background:var(--accent); color:var(--accent-ink)}
+.btn-ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+.andon{background:var(--warn-bg); color:var(--warn); border:2px solid var(--warn); font-family:var(--display); font-size:18px; letter-spacing:1px; text-transform:uppercase}
+.andon:disabled,.btn:disabled{opacity:.45; cursor:not-allowed}
+.status{font-size:14px; color:var(--muted); min-height:1.5em}
+.kpis{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))} .belt{gap:5px; padding:10px}}
+.kpi{border:1px solid var(--line); border-radius:10px; padding:12px 14px}
+.kpi span{display:block; font-size:12px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:1px}
+.kpi b{font-family:var(--mono); font-size:28px; color:var(--ink); font-variant-numeric:tabular-nums}
+/* Quiz */
+.q{border-top:1px solid var(--line); padding-top:16px; display:flex; flex-direction:column; gap:10px}
+.q:first-of-type{border-top:0; padding-top:0}
+.q h3{font-family:var(--text); font-size:17px; font-weight:600}
+.q .n{font-family:var(--mono); color:var(--accent); margin-right:6px}
+.opts{display:flex; flex-wrap:wrap; gap:8px}
+.opt{background:var(--bg); color:var(--ink); border:1px solid var(--line); font-weight:400; padding:10px 14px; text-align:left}
+.opt.right{background:var(--ok-bg); border-color:var(--ok); color:var(--ink); font-weight:600}
+.opt.wrong{background:var(--bad-bg); border-color:var(--bad); color:var(--ink)}
+.fb{font-size:14px}
+.score{display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; background:var(--soft); border-radius:12px; padding:14px 18px}
+.score b{font-family:var(--mono); font-size:22px; color:var(--ink)}
+footer{font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px 20px; justify-content:space-between}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="sheet">
+    <div>
+      <p class="eyebrow">Administración · Fase 4 · Práctica interactiva</p>
+      <h1>Laboratorio de Control</h1>
+    </div>
+    <div class="meta" aria-label="Datos de la práctica">
+      <span>Alumno</span><b>Diego Iván Vázquez García</b>
+      <span>Matrícula</span><b>2007424</b>
+      <span>Fecha</span><b>10/10/2026</b>
+    </div>
+    <p class="sub">Tres ejercicios para aplicar el control, los indicadores y la mejora continua: calcula un indicador con su semáforo, opera una línea al estilo Toyota y comprueba lo aprendido.</p>
+  </header>
+
+  <section class="module" aria-labelledby="m1">
+    <div class="mhead"><h2 id="m1">1 · Calculadora de cumplimiento</h2><p>Escribe la meta y el resultado real; el semáforo dice qué hacer.</p></div>
+    <div class="grid2">
+      <form id="calc" class="fields" novalidate>
+        <div class="full">
+          <label for="kpiSel">Indicador</label>
+          <select id="kpiSel">
+            <option value="scrap">% de scrap (menos es mejor)</option>
+            <option value="otd">Entregas a tiempo, % (más es mejor)</option>
+            <option value="oee">OEE, % (más es mejor)</option>
+            <option value="cost">Costo por unidad, $ (menos es mejor)</option>
+          </select>
+        </div>
+        <div><label for="meta">Meta</label><input id="meta" type="number" step="any" min="0" value="2"></div>
+        <div><label for="real">Resultado real</label><input id="real" type="number" step="any" min="0" value="3"></div>
+        <p class="hint full">Ejemplo cargado: meta de scrap 2 % y resultado 3 %. Rangos de ejemplo: 95 % o más en meta, 85 a 94 % alerta, menos de 85 % fuera de meta.</p>
+      </form>
+      <div class="result" aria-live="polite">
+        <p class="eyebrow">% de cumplimiento</p>
+        <p class="big" id="pct">66.7<small> %</small></p>
+        <span class="chip bad" id="chip">Fuera de meta</span>
+        <div>
+          <div class="scale"><div class="mark" id="mark" style="left:33%"></div></div>
+          <div class="scale-l"><span>0</span><span>85</span><span>95</span><span>200 %</span></div>
+        </div>
+        <p class="formula" id="formula">meta ÷ real × 100 = 2 ÷ 3 × 100</p>
+        <p id="advice">Aplica una acción correctiva inmediata: busca la causa raíz con los 5 porqués.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="module" aria-labelledby="m2">
+    <div class="mhead"><h2 id="m2">2 · Línea con andon, estilo Toyota</h2><p>Cuando aparezca una pieza roja, jala el andon antes de que llegue al cliente. Es control concurrente.</p></div>
+    <div class="belt" id="belt" aria-label="Línea de ensamble"></div>
+    <div class="controls">
+      <button class="btn" id="start" type="button">Iniciar línea</button>
+      <button class="andon" id="andon" type="button" disabled>Jalar el andon</button>
+      <button class="btn-ghost" id="reset" type="button">Reiniciar</button>
+      <p class="status" id="status" aria-live="polite">Línea detenida. Pulsa “Iniciar línea”.</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span>Piezas</span><b id="kPiezas">0</b></div>
+      <div class="kpi"><span>Defectos detenidos</span><b id="kDet">0</b></div>
+      <div class="kpi"><span>Llegaron al cliente</span><b id="kEsc">0</b></div>
+      <div class="kpi"><span>Calidad entregada</span><b id="kCal">—</b></div>
+    </div>
+  </section>
+
+  <section class="module" aria-labelledby="m3">
+    <div class="mhead"><h2 id="m3">3 · Comprueba lo aprendido</h2><p>Siete preguntas sobre la fase y el caso Toyota.</p></div>
+    <div id="quiz"></div>
+    <div class="score"><span>Respuestas correctas: <b id="score">0 / 7</b></span><button class="btn-ghost" id="qreset" type="button">Volver a intentar</button></div>
+  </section>
+
+  <footer><span>Fuentes: Robbins y Coulter, <i>Administración</i>; Ohno, <i>El sistema de producción Toyota</i>; Liker, <i>Las claves del éxito de Toyota</i>.</span><span>Cifras de ejemplo con fines didácticos.</span></footer>
+</div>
+
+<script>
+(function(){
+  // ---------- 1. Calculadora ----------
+  var presets={scrap:{meta:2,real:3,lower:true},otd:{meta:95,real:91,lower:false},oee:{meta:85,real:78,lower:false},cost:{meta:120,real:114,lower:true}};
+  var sel=document.getElementById('kpiSel'),mi=document.getElementById('meta'),ri=document.getElementById('real');
+  function fmt(n){return (Math.round(n*10)/10).toString()}
+  function calc(){
+    var lower=presets[sel.value].lower,m=parseFloat(mi.value),r=parseFloat(ri.value);
+    var pct=document.getElementById('pct'),chip=document.getElementById('chip'),adv=document.getElementById('advice'),f=document.getElementById('formula'),mark=document.getElementById('mark');
+    if(!(m>0)||!(r>0)){pct.innerHTML='—<small> %</small>';chip.className='chip warn';chip.textContent='Faltan datos';f.textContent='Escribe una meta y un resultado mayores que cero.';adv.textContent='';return}
+    var c=lower?m/r*100:r/m*100;
+    pct.innerHTML=fmt(c)+'<small> %</small>';
+    f.textContent=(lower?'meta ÷ real × 100 = '+m+' ÷ '+r:'real ÷ meta × 100 = '+r+' ÷ '+m)+' × 100';
+    mark.style.left=Math.min(c,200)/200*100+'%';
+    if(c>=95){chip.className='chip ok';chip.textContent='En meta';adv.textContent='Mantén el método y documéntalo como estándar.'}
+    else if(c>=85){chip.className='chip warn';chip.textContent='Alerta';adv.textContent='Analiza causas antes de que se convierta en desviación.'}
+    else{chip.className='chip bad';chip.textContent='Fuera de meta';adv.textContent='Aplica una acción correctiva inmediata: busca la causa raíz con los 5 porqués.'}
+  }
+  sel.addEventListener('change',function(){var p=presets[sel.value];mi.value=p.meta;ri.value=p.real;calc()});
+  mi.addEventListener('input',calc);ri.addEventListener('input',calc);
+  document.getElementById('calc').addEventListener('submit',function(e){e.preventDefault()});
+  calc();
+
+  // ---------- 2. Línea andon ----------
+  var N=8,line=[],timer=null,stopped=0,st={p:0,d:0,e:0,f:0};
+  var belt=document.getElementById('belt'),bStart=document.getElementById('start'),bAndon=document.getElementById('andon'),status=document.getElementById('status');
+  for(var i=0;i<N;i++){var s=document.createElement('div');s.className='slot';belt.appendChild(s)}
+  function seed(){line=[];for(var i=0;i<N;i++)line.push(i<5?(i===3?'def':'ok'):null)}
+  function draw(){
+    var slots=belt.children;
+    for(var i=0;i<N;i++){slots[i].innerHTML=line[i]?'<div class="piece '+(line[i]==='def'?'def':line[i]==='fixed'?'fixed':'')+'" aria-label="'+(line[i]==='def'?'pieza defectuosa':'pieza')+'"></div>':''}
+    document.getElementById('kPiezas').textContent=st.p;document.getElementById('kDet').textContent=st.d;document.getElementById('kEsc').textContent=st.e;
+    var deliv=st.p-0;document.getElementById('kCal').textContent=st.p?fmt((st.p-st.e)/st.p*100)+'%':'—';
+  }
+  function tick(){
+    if(Date.now()<stopped)return;
+    var out=line[N-1];
+    if(out){st.p++;if(out==='def'){st.e++;status.textContent='Una pieza defectuosa llegó al cliente. El control llegó tarde.'}}
+    line.pop();line.unshift(Math.random()<0.18?'def':'ok');
+    draw();
+  }
+  bStart.addEventListener('click',function(){
+    if(timer){clearInterval(timer);timer=null;bStart.textContent='Reanudar línea';bAndon.disabled=true;status.textContent='Línea en pausa.';return}
+    timer=setInterval(tick,850);bStart.textContent='Pausar línea';bAndon.disabled=false;status.textContent='Línea en marcha: vigila las piezas.';
+  });
+  bAndon.addEventListener('click',function(){
+    var idx=line.indexOf('def');
+    if(idx===-1){st.f++;status.textContent='Paro sin defecto: el andon se usa solo ante una anomalía real.';return}
+    for(var i=0;i<N;i++)if(line[i]==='def'){line[i]='fixed';st.d++}
+    stopped=Date.now()+1300;status.textContent='Línea detenida. El líder corrigió la pieza en la estación; así trabaja jidoka.';draw();
+  });
+  document.getElementById('reset').addEventListener('click',function(){if(timer){clearInterval(timer);timer=null}st={p:0,d:0,e:0,f:0};seed();draw();bStart.textContent='Iniciar línea';bAndon.disabled=true;status.textContent='Línea detenida. Pulsa “Iniciar línea”.'});
+  seed();draw();
+
+  // ---------- 3. Quiz ----------
+  var Q=[
+    ['Revisar la materia prima al recibirla es un control…',['Preventivo','Concurrente','Posterior'],0,'Se aplica antes de que inicie el proceso.'],
+    ['En Toyota, jalar el cordón andon es un control…',['Preventivo','Concurrente','Posterior'],1,'Ocurre mientras el trabajo se realiza.'],
+    ['¿Cuál es el primer paso del proceso de control?',['Medir el desempeño','Establecer estándares','Tomar acciones correctivas'],1,'Sin estándar no hay contra qué comparar.'],
+    ['¿Cuál de estos sí es un buen indicador?',['Mejorar el servicio','% de entregas a tiempo por mes, meta 95 %','Que los clientes estén contentos'],1,'Es medible, tiene periodo y tiene meta.'],
+    ['Meta de scrap 2 %, resultado 3 %. El resultado está…',['En meta','Fuera de meta','No se puede saber'],1,'En scrap, menos es mejor: 3 % supera el máximo permitido.'],
+    ['En el ciclo PHVA, el control y los indicadores corresponden a…',['Planear','Hacer','Verificar'],2,'Verificar es medir si la mejora funcionó.'],
+    ['Preguntar “¿por qué?” hasta encontrar la causa raíz se llama…',['Poka-yoke','5 porqués','Justo a tiempo'],1,'Técnica popularizada por Taiichi Ohno en Toyota.']
+  ];
+  var box=document.getElementById('quiz'),answered={},score=0;
+  function buildQuiz(){
+    box.innerHTML='';answered={};score=0;document.getElementById('score').textContent='0 / '+Q.length;
+    Q.forEach(function(q,qi){
+      var d=document.createElement('div');d.className='q';
+      d.innerHTML='<h3><span class="n">'+(qi+1)+'.</span>'+q[0]+'</h3><div class="opts"></div><p class="fb" aria-live="polite"></p>';
+      var opts=d.querySelector('.opts'),fb=d.querySelector('.fb');
+      q[1].forEach(function(o,oi){
+        var b=document.createElement('button');b.type='button';b.className='opt';b.textContent=o;
+        b.addEventListener('click',function(){
+          if(answered[qi])return;answered[qi]=true;
+          var btns=opts.querySelectorAll('button');btns[q[2]].classList.add('right');
+          if(oi===q[2]){score++;fb.innerHTML='<b style="color:var(--ok)">Correcto.</b> '+q[3]}
+          else{b.classList.add('wrong');fb.innerHTML='<b style="color:var(--bad)">Incorrecto.</b> '+q[3]}
+          document.getElementById('score').textContent=score+' / '+Q.length;
+        });
+        opts.appendChild(b);
+      });
+      box.appendChild(d);
+    });
+  }
+  document.getElementById('qreset').addEventListener('click',buildQuiz);
+  buildQuiz();
+})();
+</script>
